@@ -1,0 +1,32 @@
+sudo: required
+services:
+  - docker
+language: ruby
+rvm:
+  - "2.2"
+  - "2.3.0"
+  - rbx
+env:
+  - "PGVERSION=9.5.0-1-linux-x64 PATH=\"/opt/PostgreSQL/9.5/bin:$PATH\""
+  - "PGVERSION=9.1.19-3-linux-x64 PATH=\"/opt/PostgreSQL/9.1/bin:$PATH\""
+  - "PGCROSS=true"
+matrix:
+  # Test cross compilation only with 2.3
+  exclude:
+    - rvm: "2.2"
+      env: "PGCROSS=true"
+    - rvm: rbx
+      env: "PGCROSS=true"
+  allow_failures:
+      # one test fails because GVL unblocking function is not called by Rubinius core
+    - rvm: rbx
+before_install:
+  - gem install bundler
+  - bundle install
+  # Download and install postgresql version to test against in /opt (for non-cross compile only)
+  - "if [ -z \"$PGCROSS\" ]; then
+      wget http://get.enterprisedb.com/postgresql/postgresql-$PGVERSION.run &&
+      chmod +x postgresql-$PGVERSION.run &&
+      sudo ./postgresql-$PGVERSION.run --mode unattended --unattendedmodeui minimal;
+    fi"
+script: "if [ -z \"$PGCROSS\" ]; then rake compile test; else rake gem:windows; fi"
